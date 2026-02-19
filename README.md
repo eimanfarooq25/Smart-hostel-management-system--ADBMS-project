@@ -1,0 +1,1 @@
+# Smart-hostel-management-system--ADBMS-project
