@@ -8,7 +8,6 @@ const {
   handleValidationErrors 
 } = require('../middleware/validator');
 
-// POST /api/v1/auth/register
 router.post(
   '/register', 
   validateRegister, 
@@ -16,7 +15,6 @@ router.post(
   register
 );
 
-// POST /api/v1/auth/login
 router.post(
   '/login', 
   validateLogin, 
@@ -24,7 +22,6 @@ router.post(
   login
 );
 
-// GET /api/v1/auth/profile (Protected route)
 router.get('/profile', authenticateToken, getProfile);
 
 module.exports = router;

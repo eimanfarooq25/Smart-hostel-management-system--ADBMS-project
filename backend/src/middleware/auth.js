@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
     return res.status(401).json({ 
@@ -18,8 +18,6 @@ const authenticateToken = (req, res, next) => {
         message: 'Please login again to get a new token'
       });
     }
-    
-    // Attach user info to request
     req.user = user;
     next();
   });

@@ -1,7 +1,5 @@
-// Role-Based Access Control middleware
 const checkRole = (...allowedRoles) => {
   return (req, res, next) => {
-    // req.user is set by authenticateToken middleware
     if (!req.user || !req.user.role) {
       return res.status(401).json({ 
         error: 'Authentication required',

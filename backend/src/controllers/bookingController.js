@@ -1,18 +1,13 @@
 const pool = require('../config/database');
-
-// Transaction Scenario 1: Create Booking with Amenities
 const createBooking = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
-    // START TRANSACTION (REQUIRED FOR PHASE 2)
     await connection.beginTransaction();
     console.log('=== BOOKING TRANSACTION STARTED ===');
     
     const { bed_id, booking_start_date, booking_end_date, amenity_ids } = req.body;
     const user_id = req.user.user_id;
-    
-    // Step 1: Lock bed and check availability (FOR UPDATE prevents race conditions)
     console.log(`Step 1: Locking bed ${bed_id} for booking`);
     const [beds] = await connection.query(
       'SELECT * FROM beds WHERE bed_id = ? AND status = ? FOR UPDATE',
@@ -23,8 +18,6 @@ const createBooking = async (req, res) => {
       throw new Error('Bed not available for booking');
     }
     console.log('✓ Bed is available and locked');
-    
-    // Step 2: Get room details
     const [rooms] = await connection.query(
     `SELECT r.base_price_monthly, r.daily_rate, r.floor_number, 
             r.allows_short_term
@@ -40,8 +33,6 @@ const createBooking = async (req, res) => {
     
     const room = rooms[0];
     console.log(`✓ Room found - Floor ${room.floor_number}, Price: ${room.base_price_monthly}/month`);
-    
-    // Step 3: Calculate stay duration and pricing
     const startDate = new Date(booking_start_date);
     const endDate = new Date(booking_end_date);
     const stayDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
@@ -51,8 +42,6 @@ const createBooking = async (req, res) => {
     }
     
     console.log(`✓ Stay duration: ${stayDays} days`);
-    
-    // Determine stay category and calculate price
     let stayCategory;
     let basePrice;
     
@@ -71,8 +60,6 @@ const createBooking = async (req, res) => {
     }
     
     console.log(`✓ Stay category: ${stayCategory}, Base price: ${basePrice} PKR`);
-    
-    // Step 4: Validate floor allocation (business rule enforcement)
     if (stayDays < 30 && room.floor_number > 2) {
       throw new Error('Short-term stays (under 30 days) must be on floors 1-2');
     }
@@ -86,8 +73,6 @@ const createBooking = async (req, res) => {
     }
     
     console.log('✓ Floor allocation validated');
-    
-    // Step 5: Insert booking
     console.log('Step 2: Creating booking record');
     const [bookingResult] = await connection.query(
       `INSERT INTO bookings 
@@ -100,15 +85,12 @@ const createBooking = async (req, res) => {
     
     const bookingId = bookingResult.insertId;
     console.log(`✓ Booking created - ID: ${bookingId}`);
-    
-    // Step 6: Add amenities if requested
     let totalAmenitiesPrice = 0;
     
     if (amenity_ids && amenity_ids.length > 0) {
       console.log(`Step 3: Adding ${amenity_ids.length} amenities`);
       
       for (const amenityId of amenity_ids) {
-        // Check amenity availability
         const [amenities] = await connection.query(
           `SELECT a.amenity_id, a.amenity_name, a.base_price_monthly, 
                   ha.available_count, ha.hostel_id
@@ -131,8 +113,6 @@ const createBooking = async (req, res) => {
         const amenityPrice = amenities[0].base_price_monthly;
         const amenityCost = (amenityPrice / 30) * stayDays;
         totalAmenitiesPrice += amenityCost;
-        
-        // Insert booking amenity
         await connection.query(
           'INSERT INTO booking_amenities (booking_id, amenity_id, monthly_price, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
           [bookingId, amenityId, amenityPrice, booking_start_date, booking_end_date]
@@ -140,8 +120,6 @@ const createBooking = async (req, res) => {
         
         console.log(`  ✓ Added amenity: ${amenities[0].amenity_name} - ${amenityCost.toFixed(2)} PKR`);
       }
-      
-      // Update total amenities price in booking
       await connection.query(
         'UPDATE bookings SET total_amenities_price = ? WHERE booking_id = ?',
         [totalAmenitiesPrice, bookingId]
@@ -149,15 +127,11 @@ const createBooking = async (req, res) => {
       
       console.log(`✓ Total amenities cost: ${totalAmenitiesPrice.toFixed(2)} PKR`);
     }
-    
-    // Step 7: Update booking to confirmed (triggers will handle invoice generation)
     console.log('Step 4: Confirming booking');
     await connection.query(
       'UPDATE bookings SET status = ? WHERE booking_id = ?',
       ['confirmed', bookingId]
     );
-    
-    // Step 8: Get final booking details
     const [finalBooking] = await connection.query(
       `SELECT b.*, bd.bed_number, bd.bed_type, r.room_number, h.hostel_name, h.city
        FROM bookings b
@@ -167,8 +141,6 @@ const createBooking = async (req, res) => {
        WHERE b.booking_id = ?`,
       [bookingId]
     );
-    
-    // COMMIT TRANSACTION (all changes are now permanent)
     await connection.commit();
     console.log('=== BOOKING TRANSACTION COMMITTED ===');
     console.log('');
@@ -186,7 +158,6 @@ const createBooking = async (req, res) => {
     });
     
   } catch (error) {
-    // ROLLBACK on any error (undo all changes)
     await connection.rollback();
     console.log('=== BOOKING TRANSACTION ROLLED BACK ===');
     console.log(`Reason: ${error.message}`);
@@ -198,12 +169,9 @@ const createBooking = async (req, res) => {
     });
     
   } finally {
-    // Always release connection back to pool
     connection.release();
   }
 };
-
-// Get user bookings
 const getUserBookings = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -235,8 +203,6 @@ const getUserBookings = async (req, res) => {
     connection.release();
   }
 };
-
-// Get booking by ID
 const getBookingById = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -257,8 +223,6 @@ const getBookingById = async (req, res) => {
     if (bookings.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
-    // Get amenities for this booking
     const [amenities] = await connection.query(
       `SELECT a.amenity_name, ba.monthly_price
        FROM booking_amenities ba
@@ -282,8 +246,6 @@ const getBookingById = async (req, res) => {
     connection.release();
   }
 };
-
-// Cancel booking (students only, within 24 hours)
 const cancelBooking = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -292,8 +254,6 @@ const cancelBooking = async (req, res) => {
     
     const { booking_id } = req.params;
     const user_id = req.user.user_id;
-    
-    // Get booking
     const [bookings] = await connection.query(
       'SELECT * FROM bookings WHERE booking_id = ? AND user_id = ?',
       [booking_id, user_id]
@@ -312,21 +272,15 @@ const cancelBooking = async (req, res) => {
     if (booking.status === 'completed') {
       throw new Error('Cannot cancel completed booking');
     }
-    
-    // Check if within 24 hours
     const hoursSinceBooking = (Date.now() - new Date(booking.created_at)) / (1000 * 60 * 60);
     
     if (hoursSinceBooking > 24) {
       throw new Error('Cancellation period expired (must cancel within 24 hours)');
     }
-    
-    // Cancel booking
     await connection.query(
       'UPDATE bookings SET status = ? WHERE booking_id = ?',
       ['cancelled', booking_id]
     );
-    
-    // Free bed
     await connection.query(
       'UPDATE beds SET status = ? WHERE bed_id = ?',
       ['available', booking.bed_id]

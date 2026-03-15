@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 
-// Get all amenities
+//get all amenities
 const getAllAmenities = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -25,7 +25,7 @@ const getAllAmenities = async (req, res) => {
   }
 };
 
-// Get amenity by ID
+//get amenity by ID
 const getAmenityById = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -54,7 +54,7 @@ const getAmenityById = async (req, res) => {
   }
 };
 
-// Create amenity (owner/admin only)
+//create amenity (owner/admin only)
 const createAmenity = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -82,7 +82,7 @@ const createAmenity = async (req, res) => {
   }
 };
 
-// Update amenity (owner/admin only)
+//update amenity (owner/admin only)
 const updateAmenity = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -112,7 +112,7 @@ const updateAmenity = async (req, res) => {
   }
 };
 
-// Delete amenity (admin only)
+//delete amenity (admin only)
 const deleteAmenity = async (req, res) => {
   const connection = await pool.getConnection();
   

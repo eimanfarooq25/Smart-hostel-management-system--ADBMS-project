@@ -1,14 +1,10 @@
 const pool = require('../config/database');
-
-// Register guest (student only)
 const registerGuest = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     const { guest_name, guest_phone, relationship, check_in_date, check_out_date } = req.body;
     const user_id = req.user.user_id;
-    
-    // Validate check-in is before check-out
     if (new Date(check_in_date) >= new Date(check_out_date)) {
       return res.status(400).json({ error: 'Check-out date must be after check-in date' });
     }
@@ -35,8 +31,6 @@ const registerGuest = async (req, res) => {
     connection.release();
   }
 };
-
-// Get guest registrations
 const getGuestRegistrations = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -54,14 +48,10 @@ const getGuestRegistrations = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
-    
-    // Students only see their own guest registrations
     if (user_role === 'student') {
       query += ' AND gr.student_user_id = ?';
       params.push(user_id);
     }
-    
-    // Filter by status
     if (status) {
       query += ' AND gr.status = ?';
       params.push(status);
@@ -86,8 +76,6 @@ const getGuestRegistrations = async (req, res) => {
     connection.release();
   }
 };
-
-// Get guest registration by ID
 const getGuestRegistrationById = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -105,8 +93,6 @@ const getGuestRegistrationById = async (req, res) => {
       WHERE gr.guest_id = ?
     `;
     const params = [guest_id];
-    
-    // Students can only view their own guest registrations
     if (user_role === 'student') {
       query += ' AND gr.student_user_id = ?';
       params.push(user_id);
@@ -131,7 +117,6 @@ const getGuestRegistrationById = async (req, res) => {
   }
 };
 
-// Approve or reject guest (warden only)
 const updateGuestStatus = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -139,8 +124,6 @@ const updateGuestStatus = async (req, res) => {
     const { guest_id } = req.params;
     const { status } = req.body;
     const user_id = req.user.user_id;
-    
-    // Validate status
     if (!['approved', 'rejected', 'checked_in', 'checked_out'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }

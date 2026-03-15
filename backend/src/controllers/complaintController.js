@@ -1,6 +1,4 @@
 const pool = require('../config/database');
-
-// Submit complaint (student only)
 const submitComplaint = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -32,8 +30,6 @@ const submitComplaint = async (req, res) => {
     connection.release();
   }
 };
-
-// Get complaints (students see own, wardens see all)
 const getComplaints = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -51,26 +47,18 @@ const getComplaints = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
-    
-    // Students only see their own complaints
     if (user_role === 'student') {
       query += ' AND c.user_id = ?';
       params.push(user_id);
     }
-    
-    // Filter by status
     if (status) {
       query += ' AND c.status = ?';
       params.push(status);
     }
-    
-    // Filter by category
     if (category) {
       query += ' AND c.category = ?';
       params.push(category);
     }
-    
-    // Filter by hostel
     if (hostel_id) {
       query += ' AND c.hostel_id = ?';
       params.push(hostel_id);
@@ -95,8 +83,6 @@ const getComplaints = async (req, res) => {
     connection.release();
   }
 };
-
-// Get complaint by ID
 const getComplaintById = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -116,8 +102,6 @@ const getComplaintById = async (req, res) => {
       WHERE c.complaint_id = ?
     `;
     const params = [complaint_id];
-    
-    // Students can only view their own complaints
     if (user_role === 'student') {
       query += ' AND c.user_id = ?';
       params.push(user_id);
@@ -142,7 +126,6 @@ const getComplaintById = async (req, res) => {
   }
 };
 
-// Update complaint status (warden only)
 const updateComplaintStatus = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -152,8 +135,6 @@ const updateComplaintStatus = async (req, res) => {
     const user_id = req.user.user_id;
     
     const updateData = { status };
-    
-    // If resolving or closing, add resolver and timestamp
     if (status === 'resolved' || status === 'closed') {
       updateData.resolved_by = user_id;
       updateData.resolved_at = new Date();

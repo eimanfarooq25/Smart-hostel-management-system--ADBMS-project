@@ -2,14 +2,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 
-// Register new user
+//register new user
 const register = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     const { email, password, full_name, phone, city } = req.body;
-    
-    // Check if user already exists
     const [existing] = await connection.query(
       'SELECT user_id FROM users WHERE email = ?',
       [email]
@@ -20,11 +18,8 @@ const register = async (req, res) => {
         error: 'Email already registered' 
       });
     }
-    
-    // Hash password (CRITICAL - prevents plaintext storage)
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Get student role_id
     const [roles] = await connection.query(
       'SELECT role_id FROM roles WHERE role_name = ?',
       ['student']
@@ -38,7 +33,7 @@ const register = async (req, res) => {
     
     const roleId = roles[0].role_id;
     
-    // Insert new user (parameterized query prevents SQL injection)
+    //insert new user
     const [result] = await connection.query(
       'INSERT INTO users (role_id, email, password_hash, full_name, phone, city) VALUES (?, ?, ?, ?, ?, ?)',
       [roleId, email, hashedPassword, full_name, phone, city]
@@ -62,14 +57,12 @@ const register = async (req, res) => {
     connection.release();
   }
 };
-// Login user
+//login user
 const login = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     const { email, password } = req.body;
-    
-    // Get user with role information
     const [users] = await connection.query(
       `SELECT u.user_id, u.email, u.password_hash, u.full_name, r.role_name 
        FROM users u 
@@ -85,8 +78,6 @@ const login = async (req, res) => {
     }
     
     const user = users[0];
-    
-    // Verify password (bcrypt compares hashed password)
     const validPassword = await bcrypt.compare(password, user.password_hash);
     
     if (!validPassword) {
@@ -94,8 +85,6 @@ const login = async (req, res) => {
         error: 'Invalid email or password' 
       });
     }
-    
-    // Generate JWT token
     const token = jwt.sign(
       { 
         user_id: user.user_id, 
@@ -130,7 +119,7 @@ const login = async (req, res) => {
   }
 };
 
-// Get user profile
+//get user profile
 const getProfile = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -160,6 +149,4 @@ const getProfile = async (req, res) => {
     connection.release();
   }
 };
-
-// Update exports at bottom
 module.exports = { register, login, getProfile };

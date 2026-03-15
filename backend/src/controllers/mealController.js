@@ -1,6 +1,4 @@
 const pool = require('../config/database');
-
-// Get all meal plans
 const getAllMealPlans = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -40,15 +38,12 @@ const getAllMealPlans = async (req, res) => {
   }
 };
 
-// Subscribe to meal plan (student only)
 const subscribeMealPlan = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     const { meal_plan_id, start_date, end_date } = req.body;
     const user_id = req.user.user_id;
-    
-    // Get meal plan details
     const [mealPlans] = await connection.query(
       'SELECT * FROM meal_plans WHERE meal_plan_id = ?',
       [meal_plan_id]
@@ -59,8 +54,6 @@ const subscribeMealPlan = async (req, res) => {
     }
     
     const mealPlan = mealPlans[0];
-    
-    // Insert subscription
     const [result] = await connection.query(
       'INSERT INTO student_meal_subscriptions (user_id, hostel_id, meal_plan_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?)',
       [user_id, mealPlan.hostel_id, meal_plan_id, start_date, end_date, 'active']
@@ -81,8 +74,6 @@ const subscribeMealPlan = async (req, res) => {
     connection.release();
   }
 };
-
-// Get user subscriptions
 const getUserSubscriptions = async (req, res) => {
   const connection = await pool.getConnection();
   

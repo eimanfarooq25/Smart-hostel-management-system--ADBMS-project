@@ -1,6 +1,4 @@
 const pool = require('../config/database');
-
-// Create maintenance request
 const createMaintenanceRequest = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -30,8 +28,6 @@ const createMaintenanceRequest = async (req, res) => {
     connection.release();
   }
 };
-
-// Get maintenance requests
 const getMaintenanceRequests = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -83,8 +79,6 @@ const getMaintenanceRequests = async (req, res) => {
     connection.release();
   }
 };
-
-// Get maintenance request by ID
 const getMaintenanceRequestById = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -118,8 +112,6 @@ const getMaintenanceRequestById = async (req, res) => {
     connection.release();
   }
 };
-
-// Update maintenance request status (warden only)
 const updateMaintenanceStatus = async (req, res) => {
   const connection = await pool.getConnection();
   
@@ -128,8 +120,6 @@ const updateMaintenanceStatus = async (req, res) => {
     const { status } = req.body;
     
     const updateData = { status };
-    
-    // If resolving, add timestamp
     if (status === 'resolved') {
       updateData.resolved_at = new Date();
     }

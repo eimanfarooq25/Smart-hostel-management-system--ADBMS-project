@@ -9,18 +9,14 @@ const YAML = require('yamljs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Load Swagger document
 const swaggerDocument = YAML.load('./swagger.yaml');
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Swagger documentation route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Test route
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Smart Hostel Management API is running',
@@ -30,7 +26,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Routes
 const authRoutes = require('./src/routes/auth');
 const bookingRoutes = require('./src/routes/bookings');
 const hostelRoutes = require('./src/routes/hostels');
@@ -49,7 +44,6 @@ app.use('/api/v1/complaints', complaintRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/guests', guestRoutes);
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
