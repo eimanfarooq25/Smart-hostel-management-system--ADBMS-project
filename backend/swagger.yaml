@@ -1,0 +1,619 @@
+openapi: 3.0.0
+info:
+  title: Smart Hostel Management API
+  version: 1.0.0
+  description: Multi-city hostel booking and management system for Pakistani cities
+  contact:
+    name: Development Team
+    email: your-email@itu.edu.pk
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login endpoint
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          example: student@example.com
+        full_name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [student, warden, hostel_owner, super_admin]
+          example: student
+    
+    Booking:
+      type: object
+      properties:
+        booking_id:
+          type: integer
+        user_id:
+          type: integer
+        bed_id:
+          type: integer
+        booking_start_date:
+          type: string
+          format: date
+        booking_end_date:
+          type: string
+          format: date
+        base_price:
+          type: number
+        total_amenities_price:
+          type: number
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+    
+    Hostel:
+      type: object
+      properties:
+        hostel_id:
+          type: integer
+        hostel_name:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        gender:
+          type: string
+          enum: [male, female, co-ed]
+        total_capacity:
+          type: integer
+        rating:
+          type: number
+    
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Register a new student account with bcrypt password hashing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - full_name
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                full_name:
+                  type: string
+                phone:
+                  type: string
+                  pattern: '^03[0-9]{9}$'
+                city:
+                  type: string
+            example:
+              email: student@example.com
+              password: password123
+              full_name: John Doe
+              phone: "03001234567"
+              city: Lahore
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+        '400':
+          description: Validation error or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Login with email and password to receive JWT token (24h expiration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+            example:
+              email: student@example.com
+              password: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get authenticated user's profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required
+        '403':
+          description: Invalid token
+  
+  /bookings:
+    post:
+      tags:
+        - Bookings
+      summary: Create new booking (Student only)
+      description: Create booking with ACID transaction, automatic rollback on errors
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bed_id
+                - booking_start_date
+                - booking_end_date
+              properties:
+                bed_id:
+                  type: integer
+                booking_start_date:
+                  type: string
+                  format: date
+                booking_end_date:
+                  type: string
+                  format: date
+                amenity_ids:
+                  type: array
+                  items:
+                    type: integer
+            example:
+              bed_id: 9
+              booking_start_date: "2026-03-15"
+              booking_end_date: "2026-06-15"
+              amenity_ids: [1, 2]
+      responses:
+        '201':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+                  pricing:
+                    type: object
+                    properties:
+                      base_price:
+                        type: number
+                      amenities_price:
+                        type: number
+                      total_cost:
+                        type: number
+        '400':
+          description: Booking failed (bed unavailable, validation error)
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions (student role required)
+    
+    get:
+      tags:
+        - Bookings
+      summary: Get user bookings
+      description: Get all bookings for authenticated student
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Bookings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  bookings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+  
+  /bookings/{booking_id}:
+    get:
+      tags:
+        - Bookings
+      summary: Get specific booking
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: booking_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking details
+        '404':
+          description: Booking not found
+    
+    delete:
+      tags:
+        - Bookings
+      summary: Cancel booking (within 24 hours)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: booking_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking cancelled successfully
+        '400':
+          description: Cancellation period expired or booking already completed
+  
+  /hostels:
+    get:
+      tags:
+        - Hostels
+      summary: Get all hostels
+      description: Get all hostels with optional city and gender filters
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+          example: Lahore
+        - name: gender
+          in: query
+          schema:
+            type: string
+            enum: [male, female, co-ed]
+      responses:
+        '200':
+          description: List of hostels
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  hostels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Hostel'
+  
+  /hostels/{hostel_id}:
+    get:
+      tags:
+        - Hostels
+      summary: Get hostel by ID
+      parameters:
+        - name: hostel_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Hostel details with amenities and meal plans
+        '404':
+          description: Hostel not found
+  
+  /hostels/{hostel_id}/rooms:
+    get:
+      tags:
+        - Hostels
+      summary: Get rooms in hostel
+      parameters:
+        - name: hostel_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: floor
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, full, maintenance]
+      responses:
+        '200':
+          description: List of rooms
+  
+  /amenities:
+    get:
+      tags:
+        - Amenities
+      summary: Get all amenities
+      responses:
+        '200':
+          description: List of amenities
+    
+    post:
+      tags:
+        - Amenities
+      summary: Create amenity (Owner/Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amenity_name:
+                  type: string
+                description:
+                  type: string
+                base_price_monthly:
+                  type: number
+                category:
+                  type: string
+                  enum: [comfort, utility, service, entertainment]
+      responses:
+        '201':
+          description: Amenity created
+        '403':
+          description: Insufficient permissions
+  
+  /meals:
+    get:
+      tags:
+        - Meal Plans
+      summary: Get all meal plans
+      parameters:
+        - name: hostel_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of meal plans
+  
+  /meals/subscribe:
+    post:
+      tags:
+        - Meal Plans
+      summary: Subscribe to meal plan (Student only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meal_plan_id:
+                  type: integer
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Subscription created
+  
+  /complaints:
+    post:
+      tags:
+        - Complaints
+      summary: Submit complaint (Student only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostel_id:
+                  type: integer
+                category:
+                  type: string
+                  enum: [cleanliness, noise, staff, maintenance, food, security, other]
+                subject:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+      responses:
+        '201':
+          description: Complaint submitted
+    
+    get:
+      tags:
+        - Complaints
+      summary: Get complaints (Students see own, Wardens see all)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of complaints
+  
+  /maintenance:
+    post:
+      tags:
+        - Maintenance
+      summary: Create maintenance request
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_id:
+                  type: integer
+                issue_description:
+                  type: string
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+      responses:
+        '201':
+          description: Maintenance request created
+    
+    get:
+      tags:
+        - Maintenance
+      summary: Get maintenance requests
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of maintenance requests
+  
+  /guests:
+    post:
+      tags:
+        - Guest Registration
+      summary: Register guest (Student only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                guest_name:
+                  type: string
+                guest_phone:
+                  type: string
+                relationship:
+                  type: string
+                check_in_date:
+                  type: string
+                  format: date
+                check_out_date:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Guest registered, awaiting approval
+    
+    get:
+      tags:
+        - Guest Registration
+      summary: Get guest registrations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of guest registrations
+
+tags:
+  - name: Authentication
+    description: User registration, login, and profile management
+  - name: Bookings
+    description: Hostel booking operations with ACID transactions
+  - name: Hostels
+    description: Hostel and room information
+  - name: Amenities
+    description: Paid amenities management
+  - name: Meal Plans
+    description: Meal plan subscriptions
+  - name: Complaints
+    description: Student complaint submission and tracking
+  - name: Maintenance
+    description: Maintenance request management
+  - name: Guest Registration
+    description: Guest visit registration and approval
