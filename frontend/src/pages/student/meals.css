@@ -1,0 +1,28 @@
+.meal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+.meal-card {
+  padding: 24px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.meal-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.meal-card--active { border-color: var(--success) !important; }
+.meal-card__subscribed {
+  position: absolute;
+  top: 14px; right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--success);
+}
+.meal-card__icon { font-size: 2rem; margin-bottom: 14px; }
+.meal-card__name { font-size: 1rem; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+.meal-card__hostel { font-size: 0.78rem; color: var(--gray-400); margin-bottom: 8px; }
+.meal-card__desc { font-size: 0.82rem; color: var(--gray-500); margin-bottom: 12px; line-height: 1.5; }
+.meal-card__price { font-size: 0.875rem; color: var(--gray-600); }
+.meal-card__price strong { font-size: 1.2rem; color: var(--primary); font-family: var(--font-display); }

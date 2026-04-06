@@ -1,0 +1,19 @@
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.chart-card {
+  padding: 22px;
+}
+
+.chart-title {
+  font-size: 0.95rem;
+  color: var(--gray-800);
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+}
